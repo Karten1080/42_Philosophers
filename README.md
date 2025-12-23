@@ -80,39 +80,38 @@ timestamp_in_ms X died
 ```
 philosophers/
 ├── includes/
-│   └── philo.h           # Header principal
+│   └── philosophers.h      # Headers et structures
 ├── srcs/
-│   ├── philo.c           # Point d'entrée du programme
-│   ├── parsing.c         # Validation et parsing des arguments
-│   ├── init.c            # Initialisation des structures
-│   ├── thread.c          # Création et gestion des threads
-│   ├── routine.c         # Routine principale des philosophes
-│   ├── actions.c         # Actions des philosophes (eat, sleep, think)
-│   ├── monitor.c         # Surveillance des philosophes
-│   └── utils/
-│       ├── utils.c       # Fonctions utilitaires
-│       └── cleanup.c     # Nettoyage et libération mémoire
+│   ├── philosophers.c      # Main : Point d'entrée
+│   ├── parcing.c           # Parsing des arguments et validation
+│   ├── init.c              # Initialisation des données et attribution des fourchettes
+│   ├── dinner.c            # Routine principale (Manger, Dormir, Penser)
+│   ├── monitor.c           # Thread observateur (vérifie la mort)
+│   ├── getters_setters.c   # Accès thread-safe aux variables (Mutex)
+│   ├── safe_fonctions.c    # Wrappers sécurisés (malloc, pthread_create...)
+│   ├── write.c             # Affichage des logs protégé par mutex
+│   ├── syncro_utils.c      # Outils de synchronisation (attente des threads)
+│   └── utils.c             # Gestion du temps (gettimeofday) et nettoyage
 └── Makefile
 ```
 
 ## 🧩 Concepts Clés
 
-### Threads
-Chaque philosophe est représenté par un **thread** indépendant qui exécute sa propre routine (penser, manger, dormir) en parallèle.
+💡 Solutions Techniques
+1. Gestion des Deadlocks (Interblocages)
 
-### Mutex
-Les **mutex** (mutual exclusion) sont utilisés pour :
-- Protéger chaque fourchette (éviter qu'elle soit prise par deux philosophes)
-- Protéger l'affichage (éviter les messages entrelacés)
-- Protéger les variables partagées (état de mort, compteur de repas)
+Pour éviter que tous les philosophes prennent leur fourchette gauche en même temps et attendent indéfiniment la droite (ce qui bloquerait tout), j'ai implémenté une hiérarchie des ressources dans init.c :
 
-### Éviter les Deadlocks
-Un **deadlock** survient quand tous les philosophes prennent leur fourchette gauche en même temps et attendent leur fourchette droite. Solutions implémentées :
-- Les philosophes pairs attendent un peu avant de commencer
-- Attribution stratégique des fourchettes (gauche/droite)
+    Les philosophes Impairs prennent d'abord la fourchette Gauche puis la Droite.
 
-### Data Races
-Les **data races** sont évités en protégeant toutes les variables partagées avec des mutex appropriés.
+    Les philosophes Pairs prennent d'abord la fourchette Droite puis la Gauche. Cela brise le cycle d'attente circulaire.
+
+2. Gestion des Data Races
+
+Aucune variable partagée n'est lue ou écrite sans protection. J'utilise des fonctions "Wrappers" (dans getters_setters.c) qui verrouillent systématiquement un mutex avant de modifier ou lire une valeur sensible (comme last_meal_time ou simulation_finish).
+3. Précision du Temps
+
+usleep n'étant pas assez précis sur certains systèmes, j'ai codé une fonction precise_usleep (dans utils.c) qui combine usleep pour les longues attentes et une boucle active (spinlock) pour les dernières microsecondes, garantissant un timing parfait.
 
 ## ⚠️ Règles Importantes
 
@@ -145,7 +144,7 @@ Les **data races** sont évités en protégeant toutes les variables partagées 
 
 ## 👨‍💻 Auteur
 
-**tbhuiyan** - Étudiant 42 School
+**Asmati** - Étudiant 42 School
 
 ---
 
